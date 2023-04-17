@@ -5,7 +5,6 @@ from django.http import JsonResponse, HttpResponse
 from user.models import User
 
 
-
 # Create your views here.
 def user_reg(request):
     """ Function for user registraion with hash password """
