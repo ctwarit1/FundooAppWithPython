@@ -8,6 +8,7 @@ from user.models import User
 
 # Create your views here.
 def user_reg(request):
+    """ Function for user registraion with hash password """
     try:
         if request.method == 'POST':
             data = json.loads(request.body)
@@ -19,6 +20,7 @@ def user_reg(request):
 
 
 def user_login(request):
+    """ Function for user login """
     try:
         if request.method == 'POST':
             data = json.loads(request.body)
