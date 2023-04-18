@@ -2,31 +2,39 @@ import json
 
 from django.contrib.auth import authenticate
 from django.http import JsonResponse, HttpResponse
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from logger import logger
+
 from user.models import User
+from user.serializers import UserSerializers, UserLoginSerializers
 
 
-# Create your views here.
-def user_reg(request):
-    """ Function for user registraion with hash password """
-    try:
-        if request.method == 'POST':
-            data = json.loads(request.body)
-            user = User.objects.create_user(**data)
-            return JsonResponse({"message": "User registration Successful"})
-        return JsonResponse({"message": "Wrong method"})
-    except Exception as e:
-        return JsonResponse({"message": e})
+class UserReg(APIView):
+
+    def post(self, request):
+        try:
+            serializer = UserSerializers(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response({"message": "User registration Successful", "status": 201, "data": serializer.data},
+                            status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"message": e})
 
 
-def user_login(request):
-    """ Function for user login """
-    try:
-        if request.method == 'POST':
-            data = json.loads(request.body)
-            user = authenticate(request, **data)
-            if not user:
-                return JsonResponse({"message": "Invalid credentials"})
-            return JsonResponse({"message": "Login Successful"})
-        return JsonResponse({"message": "Wrong method"})
-    except Exception as e:
-        return JsonResponse({"message": e})
+class UserLogin(APIView):
+
+    def post(self, request):
+        try:
+            serializer = UserLoginSerializers(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response({"message": "Login Successful", "status": 202, "data": {}},
+                            status=status.HTTP_202_ACCEPTED)
+
+
+
+        except Exception as e:
+            return Response({"message": e.args[0]})
