@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from logger import logger
 from notes.models import Note
 from notes.serializers import NoteSerializers
 
@@ -21,7 +22,8 @@ class CreateNote(APIView):
             return Response({"message": "Notes Created", "status": 201, "data": serializer.data},
                             status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response({"message": str(e)})
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request):
         try:
@@ -30,7 +32,8 @@ class CreateNote(APIView):
             return Response({"message": "Note Fetched", "status": 200, "data": serializer.data},
                             status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"message": str(e)})
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request):
         try:
@@ -42,18 +45,62 @@ class CreateNote(APIView):
             return Response({"message": "Note Updated", "status": 200, "data": serializer.data},
                             status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"message": str(e)})
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         try:
             notes = Note.objects.filter(user_id=request.data.get("user"))
-            if not notes:
-                return Response({"message": "Invalid ID"})
 
             notes.delete()
             return Response({"message": "Note Deleted", "status": 204},
                             status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
-            return Response({"message": str(e)})
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class Archive(APIView):
+    def post(self, request):
+        try:
+            notes = Note.objects.get(user_id=request.data.get("user"), id=request.data.get("id"))
+            notes.isArchive = True if not notes.isArchive else False
+            notes.save()
+            return Response({"message": "Note is Archived", "status": 202},
+                            status=status.HTTP_202_ACCEPTED)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        try:
+            notes = Note.objects.filter(user_id=request.data.get("user"), isArchive=True, isTrash=False)
+            serializer = NoteSerializers(notes, many=True)
+            return Response({"message": "Note Fetched", "status": 200, "data": serializer.data},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class Trash(APIView):
+    def post(self, request):
+        try:
+            notes = Note.objects.get(user_id=request.data.get("user"), id=request.data.get("id"))
+            notes.isTrash = True if not notes.isTrash else False
+            notes.save()
+            return Response({"message": "Note is in Trash", "status": 202},
+                            status=status.HTTP_202_ACCEPTED)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        try:
+            notes = Note.objects.filter(user_id=request.data.get("user"), isArchive=False, isTrash=True)
+            serializer = NoteSerializers(notes, many=True)
+            return Response({"message": "Note Fetched", "status": 200, "data": serializer.data},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)

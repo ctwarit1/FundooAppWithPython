@@ -21,7 +21,8 @@ class UserReg(APIView):
             return Response({"message": "User registration Successful", "status": 201, "data": serializer.data},
                             status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response({"message": e})
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserLogin(APIView):
@@ -34,7 +35,6 @@ class UserLogin(APIView):
             return Response({"message": "Login Successful", "status": 202, "data": {}},
                             status=status.HTTP_202_ACCEPTED)
 
-
-
         except Exception as e:
-            return Response({"message": e.args[0]})
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
