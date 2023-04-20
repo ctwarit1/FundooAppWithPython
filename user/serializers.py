@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework.response import Response
 
+from user.utils import encode, decode
 from user.models import User
 
 
@@ -21,6 +22,11 @@ class UserLoginSerializers(serializers.Serializer):
 
     def create(self, validated_data):
         user = authenticate(username=validated_data['username'], password=validated_data['password'])
+
         if not user:
             raise Exception("Invalid Credentials")
+        if not user.is_verified:
+            raise Exception("User Not Verified")
+        token = encode({"user": user.id})
+        self.context.update({"token": token})
         return user

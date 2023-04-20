@@ -5,7 +5,7 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from user.utils import authenticate_user
 from logger import logger
 from notes.models import Note
 from notes.serializers import NoteSerializers
@@ -14,6 +14,7 @@ from notes.serializers import NoteSerializers
 # Create your views here.
 class CreateNote(APIView):
 
+    @authenticate_user
     def post(self, request):
         try:
             serializer = NoteSerializers(data=request.data)
@@ -25,6 +26,7 @@ class CreateNote(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @authenticate_user
     def get(self, request):
         try:
             notes = Note.objects.filter(user_id=request.data.get("user"), isArchive=False, isTrash=False)
@@ -34,7 +36,7 @@ class CreateNote(APIView):
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
-
+    @authenticate_user
     def put(self, request):
         try:
             notes = Note.objects.get(user_id=request.data.get("user"), id=request.data.get("id"))
@@ -48,9 +50,10 @@ class CreateNote(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @authenticate_user
     def delete(self, request):
         try:
-            notes = Note.objects.filter(user_id=request.data.get("user"))
+            notes = Note.objects.filter(user_id=request.data.get("user"), id=request.data.get("id"))
 
             notes.delete()
             return Response({"message": "Note Deleted", "status": 204},
