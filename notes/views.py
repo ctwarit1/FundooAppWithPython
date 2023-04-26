@@ -5,14 +5,19 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from user.models import User
 from user.utils import authenticate_user
 from logger import logger
-from notes.models import Note
-from notes.serializers import NoteSerializers
+from .models import Note, Label
+from notes.serializers import NoteSerializers, LabelSerializer
+from django.db.models import Q
+
 
 
 # Create your views here.
 class CreateNote(APIView):
+    """ CRUD operations - NOTES """
 
     @authenticate_user
     def post(self, request):
@@ -29,13 +34,15 @@ class CreateNote(APIView):
     @authenticate_user
     def get(self, request):
         try:
-            notes = Note.objects.filter(user_id=request.data.get("user"), isArchive=False, isTrash=False)
+            notes = Note.objects.filter(Q(user_id=request.data.get("user"), isArchive=False, isTrash=False)|
+                                        Q(collaborator__id=request.data.get("user"))).distinct("id")
             serializer = NoteSerializers(notes, many=True)
             return Response({"message": "Note Fetched", "status": 200, "data": serializer.data},
                             status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
     @authenticate_user
     def put(self, request):
         try:
@@ -107,3 +114,102 @@ class Trash(APIView):
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class Labels(APIView):
+    """ CRUD operations - LABEL """
+    @authenticate_user
+    def post(self, request):
+        try:
+            serializer = LabelSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response({"message": "Label Added Successfully", "data": serializer.data, "status": 201},
+                            status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    @authenticate_user
+    def get(self, request):
+        try:
+            # label = Label.objects.filter(name=request.data.get("name"))
+            label = Label.objects.filter(user_id=request.data.get("user"))
+            serializer = LabelSerializer(label, many=True)
+            if not label:
+                raise Exception("Please enter a valid name")
+
+            return Response({"message": "Label Fetched ", "data": serializer.data, "status": 200},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    @authenticate_user
+    def put(self, request):
+        try:
+            label = Label.objects.get(user_id=request.data.get("user"))
+            serializer = LabelSerializer(label, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            if not label:
+                raise Exception("Please enter a valid ID")
+
+            serializer.save()
+            return Response({"message": "Labels Updated", "data": serializer.data, "status": 201},
+                            status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    @authenticate_user
+    def delete(self, request):
+        try:
+            label = Label.objects.get(name=request.data.get("name"))
+            if not label:
+                raise Exception("Please enter a valid name")
+            label.delete()
+            return Response({"message": "Label is Deleted", "status": 200},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LabelWithNotes(APIView):
+    """ Post and Delete Label """
+    @authenticate_user
+    def post(self, request):
+        try:
+            note = Note.objects.get(id=request.data.get("id"), user_id=request.data.get("user"))
+            labels = []
+            for i in request.data.get("name"):
+                try:
+                    label = Label.objects.get(name=i, user_id=request.data.get("user"))
+                    labels.append(label)
+                except Label.DoesNotExist:
+                    raise Exception(f"{i} not exist")
+            note.label.add(*labels)
+            return Response({"message": "Notes with Label Created", "status": 201, "data": {}},
+                            status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    @authenticate_user
+    def delete(self, request):
+        try:
+            note = Note.objects.get(id=request.data.get("id"), user_id=request.data.get("user"))
+            label = Label.objects.get(name=request.data.get("name"), user_id=request.data.get("user"))
+            note.label.remove(label)
+
+            return Response({"message": "Label is Removed", "status": 200},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
