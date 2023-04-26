@@ -211,5 +211,38 @@ class LabelWithNotes(APIView):
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class CollaboratorWithNotes(APIView):
+    """ Post and Delete Label """
+
+    @authenticate_user
+    def post(self, request):
+        try:
+            note = Note.objects.get(id=request.data.get("id"), user_id=request.data.get("user"))
+            collaborators = []
+            for i in request.data.get("collaborator"):
+                try:
+                    collaborator = User.objects.get(id=i)
+                    collaborators.append(collaborator)
+                except User.DoesNotExist:
+                    raise Exception(f"{i} not exist")
+            note.collaborator.add(*collaborators)
+            return Response({"message": "Collaborators Created", "status": 201, "data": {}},
+                            status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
+
+    @authenticate_user
+    def delete(self, request):
+        try:
+            note = Note.objects.get(id=request.data.get("id"), user_id=request.data.get("user"))
+            for i in request.data.get("collaborator"):
+                collaborator = User.objects.get(id=i)
+                note.collaborator.remove(collaborator)
+            return Response({"message": "Collaborator Removed", "status": 200},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
