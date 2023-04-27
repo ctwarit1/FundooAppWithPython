@@ -5,14 +5,13 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from notes.utils import RedisManager
 from user.models import User
 from user.utils import authenticate_user
 from logger import logger
 from .models import Note, Label
 from notes.serializers import NoteSerializers, LabelSerializer
 from django.db.models import Q
-
 
 
 # Create your views here.
@@ -25,6 +24,7 @@ class CreateNote(APIView):
             serializer = NoteSerializers(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            RedisManager().save(user_id=request.data.get("user"), notes=serializer.data)
             return Response({"message": "Notes Created", "status": 201, "data": serializer.data},
                             status=status.HTTP_201_CREATED)
         except Exception as e:
@@ -34,7 +34,11 @@ class CreateNote(APIView):
     @authenticate_user
     def get(self, request):
         try:
-            notes = Note.objects.filter(Q(user_id=request.data.get("user"), isArchive=False, isTrash=False)|
+            redis_dict = RedisManager().get(user_id=request.data.get("user"))
+            if redis_dict:
+                return Response({"message": "Note Fetched", "status": 200, "data": redis_dict},
+                                status=status.HTTP_200_OK)
+            notes = Note.objects.filter(Q(user_id=request.data.get("user"), isArchive=False, isTrash=False) |
                                         Q(collaborator__id=request.data.get("user"))).distinct("id")
             serializer = NoteSerializers(notes, many=True)
             return Response({"message": "Note Fetched", "status": 200, "data": serializer.data},
@@ -50,7 +54,7 @@ class CreateNote(APIView):
             serializer = NoteSerializers(notes, data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-
+            RedisManager().save(user_id=request.data.get("user"), notes=serializer.data)
             return Response({"message": "Note Updated", "status": 200, "data": serializer.data},
                             status=status.HTTP_200_OK)
         except Exception as e:
@@ -61,8 +65,8 @@ class CreateNote(APIView):
     def delete(self, request):
         try:
             notes = Note.objects.filter(user_id=request.data.get("user"), id=request.data.get("id"))
-
             notes.delete()
+            RedisManager().delete(user_id=request.data.get("user"), note_id=request.data.get("id"))
             return Response({"message": "Note Deleted", "status": 204},
                             status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
@@ -116,9 +120,9 @@ class Trash(APIView):
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class Labels(APIView):
     """ CRUD operations - LABEL """
+
     @authenticate_user
     def post(self, request):
         try:
@@ -179,6 +183,7 @@ class Labels(APIView):
 
 class LabelWithNotes(APIView):
     """ Post and Delete Label """
+
     @authenticate_user
     def post(self, request):
         try:
@@ -244,5 +249,3 @@ class CollaboratorWithNotes(APIView):
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
-
-
