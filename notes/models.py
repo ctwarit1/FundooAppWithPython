@@ -35,7 +35,6 @@ class Label(models.Model):
 @receiver(signal=post_save, sender=Note)
 def notes_reminder(instance: Note, **kwargs):
     date = instance.reminder
-    # print(date.minute, date.hour, date.date(), date.month)
     if date:
         current_date = datetime.now()
         time_data = instance.reminder
@@ -48,10 +47,18 @@ def notes_reminder(instance: Note, **kwargs):
             day_of_month=remainder_time.day,
             month_of_year=time_data.month,
         )
-        PeriodicTask.objects.create(
-            crontab=crontab,
-            name=f'{instance.user.id}-{instance.id}-{instance.title}',
-            task='notes.tasks.send_mail_func',
-            args=json.dumps([instance.user.email, instance.title]),
+        task_present = PeriodicTask.objects.filter(
+            name=f'{instance.user.id}-{instance.id}-{instance.title}'
         )
+        if task_present.exists():
+            task_present = task_present.first()
+            task_present.crontab = crontab
+            task_present.save()
+        else:
+            PeriodicTask.objects.create(
+                crontab=crontab,
+                name=f'{instance.user.id}-{instance.id}-{instance.title}',
+                task='notes.tasks.send_mail_func',
+                args=json.dumps([instance.user.email, instance.title]),
+            )
 
