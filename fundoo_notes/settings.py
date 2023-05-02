@@ -12,8 +12,12 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv, find_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(find_dotenv(), override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -40,7 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'user',
     'rest_framework',
-    'notes'
+    'notes',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -146,6 +151,23 @@ ALGORITHMS = os.environ.get("ALGORITHMS")
 
 BASE_URL = 'http://127.0.0.1:8000'
 
+# celery settings
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+
+
+
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
+
+
+# beat
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+
+# smtp settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True

@@ -7,7 +7,7 @@ from user.models import User
 class NoteSerializers(serializers.ModelSerializer):
     class Meta:
         model = Note
-        fields = ['id', 'user', 'title', 'description', 'isArchive', 'isTrash', 'color', 'image', 'label',
+        fields = ['id', 'user', 'title', 'description', 'isArchive', 'isTrash', 'color', 'image', 'label', 'reminder',
                   'collaborator']
         read_only_fields = ['image', 'label', 'collaborator']
 

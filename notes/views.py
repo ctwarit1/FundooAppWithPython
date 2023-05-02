@@ -2,6 +2,7 @@ import json
 
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
+from celery import shared_task
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,6 +16,7 @@ from django.db.models import Q
 
 
 # Create your views here.
+
 class CreateNote(APIView):
     """ CRUD operations - NOTES """
 
