@@ -10,10 +10,13 @@ from rest_framework.views import APIView
 from logger import logger
 from user.serializers import UserSerializers, UserLoginSerializers
 from rest_framework.reverse import reverse
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 
 class UserReg(APIView):
 
+    @swagger_auto_schema(request_body=UserSerializers)
     def post(self, request):
         try:
             serializer = UserSerializers(data=request.data)
@@ -37,6 +40,7 @@ class UserReg(APIView):
 
 class UserLogin(APIView):
 
+    @swagger_auto_schema(request_body=UserLoginSerializers)
     def post(self, request):
         try:
             serializer = UserLoginSerializers(data=request.data)
@@ -49,8 +53,10 @@ class UserLogin(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
-class VerifyUser(APIView):
 
+class VerifyUser(APIView):
+    @swagger_auto_schema(manual_parameters=[openapi.Parameter('token', in_=openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                                                              required=True)])
     def get(self, request):
         payload = decode(token=request.query_params.get("token"))
         user = User.objects.get(id=payload.get("user"))
@@ -60,4 +66,3 @@ class VerifyUser(APIView):
         user.save()
         return Response({"message": "User Verified", "status": 202, "data": {}},
                         status=status.HTTP_202_ACCEPTED)
-

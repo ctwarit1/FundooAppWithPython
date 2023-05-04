@@ -13,6 +13,8 @@ from logger import logger
 from .models import Note, Label
 from notes.serializers import NoteSerializers, LabelSerializer
 from django.db.models import Q
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 
 # Create your views here.
@@ -20,6 +22,7 @@ from django.db.models import Q
 class CreateNote(APIView):
     """ CRUD operations - NOTES """
 
+    @swagger_auto_schema(request_body=NoteSerializers)
     @authenticate_user
     def post(self, request):
         try:
@@ -49,6 +52,13 @@ class CreateNote(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'title': openapi.Schema(type=openapi.TYPE_STRING),
+                    'description': openapi.Schema(type=openapi.TYPE_STRING),
+                    'color': openapi.Schema(type=openapi.TYPE_STRING),
+                    }))
     @authenticate_user
     def put(self, request):
         try:
@@ -63,6 +73,10 @@ class CreateNote(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    }, required=["id"]))
     @authenticate_user
     def delete(self, request):
         try:
@@ -70,13 +84,19 @@ class CreateNote(APIView):
             notes.delete()
             RedisManager().delete(user_id=request.data.get("user"), note_id=request.data.get("id"))
             return Response({"message": "Note Deleted", "status": 204},
-                            status=status.HTTP_204_NO_CONTENT)
+                            status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class Archive(APIView):
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    }, required=["id"]))
+    @authenticate_user
     def post(self, request):
         try:
             notes = Note.objects.get(user_id=request.data.get("user"), id=request.data.get("id"))
@@ -100,6 +120,12 @@ class Archive(APIView):
 
 
 class Trash(APIView):
+
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    }, required=["id"]))
+    @authenticate_user
     def post(self, request):
         try:
             notes = Note.objects.get(user_id=request.data.get("user"), id=request.data.get("id"))
@@ -111,6 +137,7 @@ class Trash(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @authenticate_user
     def get(self, request):
         try:
             notes = Note.objects.filter(user_id=request.data.get("user"), isArchive=False, isTrash=True)
@@ -125,6 +152,7 @@ class Trash(APIView):
 class Labels(APIView):
     """ CRUD operations - LABEL """
 
+    @swagger_auto_schema(request_body=LabelSerializer)
     @authenticate_user
     def post(self, request):
         try:
@@ -141,7 +169,6 @@ class Labels(APIView):
     @authenticate_user
     def get(self, request):
         try:
-            # label = Label.objects.filter(name=request.data.get("name"))
             label = Label.objects.filter(user_id=request.data.get("user"))
             serializer = LabelSerializer(label, many=True)
             if not label:
@@ -153,6 +180,11 @@ class Labels(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'name': openapi.Schema(type=openapi.TYPE_STRING),
+                    }))
     @authenticate_user
     def put(self, request):
         try:
@@ -169,6 +201,10 @@ class Labels(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={'name': openapi.Schema(type=openapi.TYPE_STRING),
+                    }, required=["name"]))
     @authenticate_user
     def delete(self, request):
         try:
@@ -186,24 +222,35 @@ class Labels(APIView):
 class LabelWithNotes(APIView):
     """ Post and Delete Label """
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT, properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+            'name': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING))
+        }))
     @authenticate_user
     def post(self, request):
         try:
             note = Note.objects.get(id=request.data.get("id"), user_id=request.data.get("user"))
-            labels = []
-            for i in request.data.get("name"):
-                try:
-                    label = Label.objects.get(name=i, user_id=request.data.get("user"))
-                    labels.append(label)
-                except Label.DoesNotExist:
-                    raise Exception(f"{i} not exist")
-            note.label.add(*labels)
-            return Response({"message": "Notes with Label Created", "status": 201, "data": {}},
-                            status=status.HTTP_201_CREATED)
+            if note:
+                labels = []
+                for i in request.data.get("name"):
+                    try:
+                        label = Label.objects.get(name=i, user_id=request.data.get("user"))
+                        labels.append(label)
+                    except Label.DoesNotExist:
+                        raise Exception(f"{i} not exist")
+                note.label.add(*labels)
+                return Response({"message": "Notes with Label Created", "status": 201, "data": {}},
+                                status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT, properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+            'name': openapi.Schema(type=openapi.TYPE_STRING)
+        }))
     @authenticate_user
     def delete(self, request):
         try:
@@ -221,6 +268,11 @@ class LabelWithNotes(APIView):
 class CollaboratorWithNotes(APIView):
     """ Post and Delete Label """
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT, properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+            'collaborator': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER))
+        }))
     @authenticate_user
     def post(self, request):
         try:
@@ -239,6 +291,11 @@ class CollaboratorWithNotes(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT, properties={
+            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+            'collaborator': openapi.Schema(type=openapi.TYPE_INTEGER)
+        }))
     @authenticate_user
     def delete(self, request):
         try:

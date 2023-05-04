@@ -10,3 +10,4 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False)
 
 
+

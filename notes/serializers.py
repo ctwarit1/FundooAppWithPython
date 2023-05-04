@@ -38,6 +38,7 @@ class LabelSerializer(serializers.ModelSerializer):
         model = Label
         fields = ['id', 'name', 'user', 'created_at', 'modified_at']
         read_only_fields = ['created_at', 'modified_at']
+
     def create(self, validated_data):
         label = Label.objects.filter(name=validated_data["name"], user=validated_data["user"])
         if label.exists():
