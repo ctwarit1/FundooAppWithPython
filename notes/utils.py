@@ -15,7 +15,6 @@ class RedisManager:
 
     def get(self, user_id):
         user_id = str(user_id)
-        print(user_id)
         redis_notes = self.redis.hgetall(user_id)
         if redis_notes:
             data = [json.loads(x) for x in redis_notes.values()]

@@ -10,4 +10,8 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False)
 
 
+class UserLog(models.Model):
+    request_method = models.CharField(max_length=20)
+    url = models.CharField(max_length=50)
+    count = models.IntegerField(default=1)
 
