@@ -84,7 +84,7 @@ class CreateNote(APIView):
             notes.delete()
             RedisManager().delete(user_id=request.data.get("user"), note_id=request.data.get("id"))
             return Response({"message": "Note Deleted", "status": 204},
-                            status=status.HTTP_200_OK)
+                            status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
@@ -108,6 +108,7 @@ class Archive(APIView):
             logger.exception(e)
             return Response({"message": str(e), "status": 400}, status=status.HTTP_400_BAD_REQUEST)
 
+    @authenticate_user
     def get(self, request):
         try:
             notes = Note.objects.filter(user_id=request.data.get("user"), isArchive=True, isTrash=False)

@@ -1,11 +1,9 @@
 import jwt
-from django.conf import settings
-from datetime import datetime, timedelta
-
-from rest_framework import status
-from rest_framework.response import Response
-
 from user.models import User
+from django.conf import settings
+from rest_framework import status
+from datetime import datetime, timedelta
+from rest_framework.response import Response
 
 
 def encode(payload):
@@ -21,7 +19,6 @@ def decode(token):
         raise Exception(ex)
 
 
-
 def authenticate_user(function):
     def wrapper(self, request):
         token = request.headers.get("token")
@@ -35,5 +32,5 @@ def authenticate_user(function):
             return Response({"message": "Invalid User"}, status=status.HTTP_400_BAD_REQUEST)
         request.data.update({"user": user.id})
         return function(self, request)
-    return wrapper
 
+    return wrapper
